@@ -6,7 +6,7 @@ app.use(express.json());
 
 app.use(cookie());
 
-const port = 8000;
+const port = 3306;
 
 require("./database");
 
@@ -25,6 +25,6 @@ app.use("*", (req, res) => {
     res.status(404).end();
 });
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
     console.log(`Le serveur Node écoute sur le port ${port}`);
 });
