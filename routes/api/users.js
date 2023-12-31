@@ -46,7 +46,7 @@ router.post("/register", (req, res) => {
                                     const insertSql = "INSERT INTO usershavelevels (idUser, idLevel) VALUES (?, ?)";
                                     pool
                                         .query(insertSql, [idUser, idLevel])
-                                        .then(() => {
+                                        .then((result) => {
                                             res.status(200).json({ message: "Inscription réussie !" });
                                         })
                                         .catch((err) => {
