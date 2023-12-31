@@ -6,16 +6,17 @@ app.use(express.json());
 
 app.use(cookie());
 
-const port = 3306;
+const port = 8000;
 
 require("./database");
 
 const routes = require("./routes");
 
 app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Origin", "http://localhost:3000");
     res.header("Access-Control-Allow-Methods", "GET, POST, DELETE, PATCH");
     res.header("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
     next();
 });
 

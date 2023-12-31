@@ -1,17 +1,17 @@
 const router = require("express").Router();
 
-const connection = require("../../database");
+const pool = require("../../database");
 
 router.get("/getLevels", (req, res) => {
-    try {
-        const sqlLevels = "SELECT * FROM levels";
-        connection.query(sqlLevels, (err, result) => {
-            if(err) throw err;
-            res.json(result);
+    const sqlLevels = "SELECT * FROM levels";
+    pool
+        .query(sqlLevels)
+        .then(([rows]) => {
+            res.json(rows);
+        })
+        .catch((err) => {
+            console.error(err);
         });
-    } catch (error) {
-        console.log(error);
-    }
 });
 
 module.exports = router;

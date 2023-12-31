@@ -2,175 +2,249 @@ const router = require("express").Router();
 const bcrypt = require("bcrypt");
 const jsonwebtoken = require("jsonwebtoken");
 const { key, keyPub } = require("../../keys");
+const nodemailer = require("nodemailer");
+const transporter = nodemailer.createTransport({
+    service: "Gmail",
+    auth: {
+        user: "gwendalftests@gmail.com",
+        pass: "cmpa gkeq zsfs epdr"
+    }
+});
 
-const connection = require("../../database");
+const pool = require("../../database");
 
 router.get("/checkAdmin", (req, res) => {
-    try {
-        const sqlAdmin = "SELECT COUNT(admin) 'admin' FROM users WHERE admin = 1";
-        connection.query(sqlAdmin, (err, result) => {
-            if (err) throw err;
-            const checkAdmin = result[0].admin > 0;
-            res.json(checkAdmin);
+    const sqlAdmin = "SELECT COUNT(admin) 'admin' FROM users WHERE admin = 1";
+    pool
+        .query(sqlAdmin)
+        .then(([rows]) => {
+            res.json(rows[0].admin > 0);
+        })
+        .catch((err) => {
+            console.error(err);
         });
-    } catch (error) {
-        console.log(error);
-    }
 });
 
 router.post("/register", (req, res) => {
     const { admin, username, emailRegister, passwordRegister, idLevel, GM } = req.body;
     const verifyEmail = "SELECT * FROM users WHERE email = ?";
-    connection.query(verifyEmail, [emailRegister], (err, result) => {
-        try {
-            if (!result.length) {
+    pool
+        .query(verifyEmail, [emailRegister])
+        .then(([rows]) => {
+            if (!rows.length) {
                 const verifyUsername = "SELECT * FROM users WHERE username = ?";
-                connection.query(verifyUsername, [username], async (err, result) => {
-                    try {
-                        if (!result.length) {
+                pool
+                    .query(verifyUsername, [username])
+                    .then(async ([rows]) => {
+                        if (!rows.length) {
                             const hashedPassword = await bcrypt.hash(passwordRegister, 10);
                             const insertSql = "INSERT INTO users (admin, username, email, userPassword, GM) VALUES (?, ?, ?, ?, ?)";
-                            connection.query(insertSql, [admin, username, emailRegister, hashedPassword, GM], (err, result) => {
-                                if (err) throw err;
-                                const idUser = result.insertId;
-                                const insertSql = "INSERT INTO usershavelevels (idUser, idLevel) VALUES (?, ?)";
-                                connection.query(insertSql, [idUser, idLevel], (err, result) => {
-                                    if (err) throw err;
-                                    const selectSql = "SELECT * FROM users NATURAL JOIN levels";
-                                    connection.query(selectSql, (err, result) => {
-                                        if (err) throw err;
-                                        res.json(result[0]);
-                                    });
-                                    // select SQL unnecessary only for log in front end
-                                    // add res.end() after removing
+                            pool
+                                .query(insertSql, [admin, username, emailRegister, hashedPassword, GM])
+                                .then((result) => {
+                                    const idUser = result[0].insertId;
+                                    const insertSql = "INSERT INTO usershavelevels (idUser, idLevel) VALUES (?, ?)";
+                                    pool
+                                        .query(insertSql, [idUser, idLevel])
+                                        .then(() => {
+                                            res.status(200).json({ message: "Inscription réussie !" });
+                                        })
+                                        .catch((err) => {
+                                            console.error(err);
+                                            res.status(500).json("Une erreur est survenue");
+                                        });
+                                })
+                                .catch((err) => {
+                                    console.error(err);
+                                    res.status(500).json("Une erreur est survenue");
                                 });
-                            });
                         } else {
                             res.status(400).json("Nom d'utilisateur déjà utilisé");
                         }
-                    } catch (error) {
+                    })
+                    .catch((err) => {
+                        console.error(err);
                         res.status(500).json("Une erreur est survenue");
-                    }
-                });
+                    });
             } else {
                 res.status(400).json("Cet email existe déjà");
             }
-        } catch (error) {
+        })
+        .catch((err) => {
+            console.error(err);
             res.status(500).json("Une erreur est survenue");
-        }
-    });
+        });
 });
 
 router.post("/login", async (req, res) => {
-    const { emailLogin, passwordLogin, stayConnected, admin } = req.body;
-    const sqlVerify = admin ? "SELECT * FROM users NATURAL JOIN usershavelevels NATURAL JOIN levels WHERE admin = 1 AND email = ?"
-        : "SELECT * FROM users NATURAL JOIN usershavelevels NATURAL JOIN levels WHERE admin = 0 AND email = ?";
-    connection.query(sqlVerify, [emailLogin], (err, result) => {
-        try {
-            if (result.length > 0) {
-                if (bcrypt.compareSync(passwordLogin, result[0].userPassword) && !stayConnected) {
-                    const token = jsonwebtoken.sign({}, key, {
-                        subject: result[0].idUser.toString(),
-                        expiresIn: "24h",
-                        algorithm: "RS256",
-                    });
-                    res.cookie("Role_Initiative_Token", token, { maxAge: 1000 * 60 * 60 * 24 });
-                    res.json({ ...result[0], userPassword: "", icon: !result[0].icon.data ? null : result.icon, GM: result[0].GM === 1, admin: result[0].admin === 1 });
-                } else if (bcrypt.compareSync(passwordLogin, result[0].userPassword) && stayConnected) {
-                    const token = jsonwebtoken.sign({}, key, {
-                        subject: result[0].idUser.toString(),
-                        expiresIn: "30d",
-                        algorithm: "RS256",
-                    });
-                    res.cookie("Role_Initiative_Token", token, { maxAge: 1000 * 60 * 60 * 24 * 30 });
-                    res.json({ ...result[0], userPassword: "", icon: !result[0].icon.data ? null : result.icon, GM: result[0].GM === 1, admin: result[0].admin === 1 });
-                } else {
-                    res.status(400).json("Email et/ou mot de passe incorrectes");
-                }
+    try {
+        const { emailLogin, passwordLogin, stayConnected, admin } = req.body;
+        const sqlVerify = admin ? "SELECT * FROM users NATURAL JOIN usershavelevels NATURAL JOIN levels WHERE admin = 1 AND email = ?"
+            : "SELECT * FROM users NATURAL JOIN usershavelevels NATURAL JOIN levels WHERE admin = 0 AND email = ?";
+        const [rows] = await pool.query(sqlVerify, [emailLogin]);
+        if (rows.length > 0) {
+            if (bcrypt.compareSync(passwordLogin, rows[0].userPassword) && !stayConnected) {
+                const token = jsonwebtoken.sign({}, key, {
+                    subject: rows[0].idUser.toString(),
+                    expiresIn: "24h",
+                    algorithm: "RS256",
+                });
+                res.cookie("Role_Initiative_Token", token, {
+                    maxAge: 1000 * 60 * 60 * 24,
+                    httpOnly: true,
+                    secure: true,
+                    sameSite: "None",
+                });
+                res.json({ ...rows[0], userPassword: "", icon: !rows[0].icon.data ? null : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 });
+            } else if (bcrypt.compareSync(passwordLogin, rows[0].userPassword) && stayConnected) {
+                const token = jsonwebtoken.sign({}, key, {
+                    subject: rows[0].idUser.toString(),
+                    expiresIn: "30d",
+                    algorithm: "RS256",
+                });
+                res.cookie("Role_Initiative_Token", token, {
+                    maxAge: 1000 * 60 * 60 * 24 * 30,
+                    httpOnly: true,
+                    secure: true,
+                    sameSite: "None",
+                });
+                res.json({ ...rows[0], userPassword: "", icon: !rows[0].icon.data ? null : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 });
             } else {
                 res.status(400).json("Email et/ou mot de passe incorrectes");
             }
-        } catch (error) {
-            console.log(error);
-            res.status(500).json("Une erreur est survenue");
+        } else {
+            res.status(400).json("Email et/ou mot de passe incorrectes");
         }
-    });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json("Une erreur est survenue");
+    }
 });
 
 router.get("/connectedUser", (req, res) => {
     const { Role_Initiative_Token } = req.cookies;
     if (Role_Initiative_Token) {
-        try {
-            const keyPubString = keyPub.toString("utf16le");
-            const decodedToken = jsonwebtoken.verify(
-                Role_Initiative_Token,
-                keyPubString,
-                {
-                    algorithms: "RS256",
-                });
-            const selectSql =
-                "SELECT * FROM users NATURAL JOIN usershavelevels NATURAL JOIN levels WHERE idUser = ?";
-            connection.query(selectSql, [decodedToken.sub], (err, result) => {
-                if (err) throw err;
-                const connectedUser = { ...result[0], userPassword: "", icon: !result[0].icon.data ? false : result.icon, GM: result[0].GM === 1, admin: result[0].admin === 1 };
-                if (connectedUser) {
+        const keyPubString = keyPub.toString("utf16le");
+        const decodedToken = jsonwebtoken.verify(
+            Role_Initiative_Token,
+            keyPubString,
+            {
+                algorithms: "RS256",
+            });
+        const selectSql =
+            "SELECT * FROM users NATURAL JOIN usershavelevels NATURAL JOIN levels WHERE idUser = ?";
+        pool
+            .query(selectSql, [decodedToken.sub])
+            .then(([rows]) => {
+                if (rows.length > 0) {
+                    const connectedUser = { ...rows[0], userPassword: "", icon: !rows[0].icon.data ? false : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 };
                     res.json(connectedUser);
                 } else {
                     res.json(null);
                 }
+            })
+            .catch((err) => {
+                console.error(err);
+                res.json(null);
             });
-        } catch (error) {
-            console.log(error);
-            res.json(null);
-        }
     } else {
         res.json(null);
     }
 });
 
 router.delete("/logout", (req, res) => {
-    res.clearCookie("Role_Initiative_Token" || "Role_Initiative_Extended_Token");
+    res.clearCookie("Role_Initiative_Token" || "Role_Initiative_Extended_Token", {
+        secure: true,
+        httpOnly: true,
+        sameSite: "None",
+    });
     console.log("Disconnecting");
     res.end();
 });
 
 router.get("/getUserJoinedRoom/:idUser/:idRoom", (req, res) => {
-    try {
-        const { idUser, idRoom } = req.params;
-        const GMRoomsProfileSql = "SELECT * FROM usersjoinrooms WHERE idUser = ? AND idRoom = ?";
-        connection.query(GMRoomsProfileSql, [idUser, idRoom], (err, result) => {
-            if (err) throw err;
-            res.json(result);
+    const { idUser, idRoom } = req.params;
+    const GMRoomsProfileSql = "SELECT * FROM usersjoinrooms WHERE idUser = ? AND idRoom = ?";
+    pool
+        .query(GMRoomsProfileSql, [idUser, idRoom])
+        .then(([rows]) => {
+            res.json(rows);
+        })
+        .catch((err) => {
+            console.error(err);
         });
-    } catch (error) {
-        console.log(error);
-    }
 });
 
 router.post("/userJoinsRoom", (req, res) => {
-    try {
-        const { idUser, idRoom } = req.body;
-        const userJoinsRoomSql = "INSERT INTO usersjoinrooms (idUser, idRoom) VALUES (?, ?)";
-        connection.query(userJoinsRoomSql, [idUser, idRoom], (err, result) => {
-            if (err) throw err;
-            res.json(req.body)
+    const { idUser, idRoom } = req.body;
+    const userJoinsRoomSql = "INSERT INTO usersjoinrooms (idUser, idRoom) VALUES (?, ?)";
+    pool
+        .query(userJoinsRoomSql, [idUser, idRoom])
+        .then((result) => {
+            res.json(req.body);
         })
-    } catch (error) {
-        console.log(error);
-    }
+        .catch((err) => {
+            console.error(err);
+        });
 });
 
 router.delete("/userLeavesRoom", (req, res) => {
-    try {
-        const { idUser, idRoom } = req.body;
-        const userLeavesRoomSql = "DELETE FROM usersjoinrooms WHERE idUser = ? AND idRoom = ?";
-        connection.query(userLeavesRoomSql, [idUser, idRoom], (err, result) => {
-            if (err) throw err;
-            res.end()
+    const { idUser, idRoom } = req.body;
+    const userLeavesRoomSql = "DELETE FROM usersjoinrooms WHERE idUser = ? AND idRoom = ?";
+    pool
+        .query(userLeavesRoomSql, [idUser, idRoom])
+        .then((result) => {
+            res.end();
         })
-    } catch (error) {
-        console.log(error);
-    }
+        .catch((err) => {
+            console.error(err);
+        });
+});
+
+router.get("/resetPassword/:email", (req, res) => {
+    const email = req.params.email;
+    const searchMailSql = "SELECT * FROM users WHERE email = ?";
+    pool
+        .query(searchMailSql, [email])
+        .then((result) => {
+            if (result[0].length > 0) {
+                const confirmLink = `http://localhost:3000/reset-password?email=${email}`;
+                const mailOptions = {
+                    from: "gwendalftests@gmail.com",
+                    to: email,
+                    subject: "Réinitialisation de mot de passe Role Initiative",
+                    text: `Cliquez sur le lien pour être redirigé vers la page de réinitialisation de mot de passe : ${confirmLink}`,
+                };
+                transporter.sendMail(mailOptions, (err, info) => {
+                    if (err) {
+                        throw err;
+                    } else {
+                        res.status(200).json({ message: "Un lien de réinitialisation à été envoyé par email" });
+                    }
+                });
+            } else {
+                res.status(400).json("L'email entré n'exite pas dans la base de données");
+            }
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).json("Une erreur est survenue");
+        });
+});
+
+router.post("/changePassword", async (req, res) => {
+    const { password, email } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const changePasswordSql = "UPDATE users SET userPassword = ? WHERE email = ?";
+    pool
+        .query(changePasswordSql, [hashedPassword, email])
+        .then((result) => {
+            res.status(200).json({ message: "Mot de passe modifié, vous allez être redirigé(e)" });
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).json("Une erreur est survenue");
+        });
 });
 
 module.exports = router;

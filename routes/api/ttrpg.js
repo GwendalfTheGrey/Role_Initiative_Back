@@ -1,17 +1,17 @@
 const router = require("express").Router();
 
-const connection = require("../../database");
+const pool = require("../../database");
 
 router.get("/getTTRPG", (req, res) => {
-    try {
-        const sqlTTRPG = "SELECT * FROM ttrpg";
-        connection.query(sqlTTRPG, (err, result) => {
-            if (err) throw err;
-            res.json(result);
+    const sqlTTRPG = "SELECT * FROM ttrpg";
+    pool
+        .query(sqlTTRPG)
+        .then(([rows]) => {
+            res.json(rows);
+        })
+        .catch((err) => {
+            console.error(err);
         });
-    } catch (error) {
-        console.log(error);
-    }
 });
 
 module.exports = router;
