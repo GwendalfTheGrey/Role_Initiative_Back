@@ -58,8 +58,7 @@ router.post("/register", (req, res) => {
                                 })
                                 .catch((err) => {
                                     console.error(err);
-                                    // res.status(500).json("Une erreur est survenue");
-                                    res.status(500).json(`${err.message}`);
+                                    res.status(500).json("Une erreur est survenue");
                                 });
                         } else {
                             res.status(400).json("Nom d'utilisateur déjà utilisé");
@@ -121,8 +120,7 @@ router.post("/login", async (req, res) => {
         }
     } catch (err) {
         console.error(err);
-        // res.status(500).json("Une erreur est survenue");
-        res.status(500).json(`${err.message}`);
+        res.status(500).json("Une erreur est survenue");
     }
 });
 
