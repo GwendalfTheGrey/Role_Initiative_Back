@@ -2,6 +2,7 @@ const router = require("express").Router();
 
 const pool = require("../../database");
 
+// FETCHING ALL TTRPGS
 router.get("/getTTRPG", (req, res) => {
     const sqlTTRPG = "SELECT * FROM ttrpg";
     pool

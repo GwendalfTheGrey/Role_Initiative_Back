@@ -13,6 +13,7 @@ const transporter = nodemailer.createTransport({
 
 const pool = require("../../database");
 
+// CHECK FOR PRESENCE OF ADMIN IN DATABASE
 router.get("/checkAdmin", (req, res) => {
     const sqlAdmin = "SELECT COUNT(admin) 'admin' FROM users WHERE admin = 1";
     pool
@@ -25,6 +26,7 @@ router.get("/checkAdmin", (req, res) => {
         });
 });
 
+// USER CREATION AND ASSOCIATION OF A LEVEL
 router.post("/register", (req, res) => {
     const { admin, username, emailRegister, passwordRegister, idLevel, GM } = req.body;
     const verifyEmail = "SELECT * FROM users WHERE email = ?";
@@ -76,6 +78,7 @@ router.post("/register", (req, res) => {
         });
 });
 
+// LOGGING USER IN AN PROVIDING COOKIE FOR MAINTAINED CONNECTION
 router.post("/login", async (req, res) => {
     try {
         const { emailLogin, passwordLogin, stayConnected, admin } = req.body;
@@ -121,6 +124,7 @@ router.post("/login", async (req, res) => {
     }
 });
 
+// GETTING USER IF VALID COOKIE FOR MAINTAINED CONNECTION PRESENT
 router.get("/connectedUser", (req, res) => {
     const { Role_Initiative_Token } = req.cookies;
     if (Role_Initiative_Token) {
@@ -152,6 +156,7 @@ router.get("/connectedUser", (req, res) => {
     }
 });
 
+// COOKIE DELETION (USED IN LOGGING USER OUT)
 router.delete("/logout", (req, res) => {
     res.clearCookie("Role_Initiative_Token" || "Role_Initiative_Extended_Token", {
         secure: true,
@@ -162,6 +167,7 @@ router.delete("/logout", (req, res) => {
     res.end();
 });
 
+// FETCHING USER WHO HAS JOINED ROOM
 router.get("/getUserJoinedRoom/:idUser/:idRoom", (req, res) => {
     const { idUser, idRoom } = req.params;
     const GMRoomsProfileSql = "SELECT * FROM usersjoinrooms WHERE idUser = ? AND idRoom = ?";
@@ -175,6 +181,7 @@ router.get("/getUserJoinedRoom/:idUser/:idRoom", (req, res) => {
         });
 });
 
+// ADDING USER IN USERJOINSROOM TABLE
 router.post("/userJoinsRoom", (req, res) => {
     const { idUser, idRoom } = req.body;
     const userJoinsRoomSql = "INSERT INTO usersjoinrooms (idUser, idRoom) VALUES (?, ?)";
@@ -188,6 +195,7 @@ router.post("/userJoinsRoom", (req, res) => {
         });
 });
 
+// REMOVING USER IN USERJOINSROOM TABLE
 router.delete("/userLeavesRoom", (req, res) => {
     const { idUser, idRoom } = req.body;
     const userLeavesRoomSql = "DELETE FROM usersjoinrooms WHERE idUser = ? AND idRoom = ?";
@@ -201,6 +209,7 @@ router.delete("/userLeavesRoom", (req, res) => {
         });
 });
 
+// SENDING EMAIL FOR PASSWORD RESET IF EMAIL OF USER IN DATABASE
 router.get("/resetPassword/:email", (req, res) => {
     const email = req.params.email;
     const searchMailSql = "SELECT * FROM users WHERE email = ?";
@@ -232,6 +241,7 @@ router.get("/resetPassword/:email", (req, res) => {
         });
 });
 
+// UPDATING PASSWORD OF USER
 router.post("/changePassword", async (req, res) => {
     const { password, email } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);

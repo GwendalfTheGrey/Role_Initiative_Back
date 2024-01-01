@@ -2,6 +2,7 @@ const router = require("express").Router();
 
 const pool = require("../../database");
 
+// FETCHING ALL ROOMS
 router.get("/getHomeRooms", (req, res) => {
     const roomsSql = "SELECT idUser, username, icon, idRoom, title, description, TTRPGName, idGenre, levelName FROM users NATURAL JOIN rooms NATURAL JOIN roomshavelevels NATURAL join levels NATURAL JOIN ttrpg NATURAL JOIN ttrpg_ttrpggenres WHERE rooms.onGoing = 0";
     pool
@@ -14,6 +15,7 @@ router.get("/getHomeRooms", (req, res) => {
         });
 });
 
+// FETCHING FANTASY ROOMS
 router.get("/getFantasyRooms", (req, res) => {
     const roomsSql = "SELECT idUser, username, icon, idRoom, title, description, TTRPGName, idGenre, levelName FROM users NATURAL JOIN rooms NATURAL JOIN roomshavelevels NATURAL join levels NATURAL JOIN ttrpg NATURAL JOIN ttrpg_ttrpggenres WHERE rooms.onGoing = 0 AND ttrpg_ttrpggenres.idGenre = 1";
     pool
@@ -26,6 +28,7 @@ router.get("/getFantasyRooms", (req, res) => {
         });
 });
 
+// FETCHING SCIFI ROOMS
 router.get("/getSciFiRooms", (req, res) => {
     const roomsSql = "SELECT idUser, username, icon, idRoom, title, description, TTRPGName, idGenre, levelName FROM users NATURAL JOIN rooms NATURAL JOIN roomshavelevels NATURAL join levels NATURAL JOIN ttrpg NATURAL JOIN ttrpg_ttrpggenres WHERE rooms.onGoing = 0 AND ttrpg_ttrpggenres.idGenre = 2";
     pool
@@ -38,6 +41,7 @@ router.get("/getSciFiRooms", (req, res) => {
         });
 });
 
+// FETCHING HORRORANDOTHER ROOMS
 router.get("/getHorrorAndOtherRooms", (req, res) => {
     const roomsSql = "SELECT idUser, username, icon, idRoom, title, description, TTRPGName, idGenre, levelName FROM users NATURAL JOIN rooms NATURAL JOIN roomshavelevels NATURAL join levels NATURAL JOIN ttrpg NATURAL JOIN ttrpg_ttrpggenres WHERE rooms.onGoing = 0 AND ttrpg_ttrpggenres.idGenre = 3";
     pool
@@ -50,6 +54,7 @@ router.get("/getHorrorAndOtherRooms", (req, res) => {
         });
 });
 
+// FETCHING SPECIFIC ROOM DETAILS
 router.get("/getRoomDetails/:idRoom", (req, res) => {
     const idRoom = req.params.idRoom;
     const roomDetailsSql = "SELECT idUser, username, icon, idRoom, title, description, discord, onGoing, TTRPGName, idGenre, idLevel, levelName FROM users NATURAL JOIN rooms NATURAL JOIN roomshavelevels NATURAL join levels NATURAL JOIN ttrpg NATURAL JOIN ttrpg_ttrpggenres WHERE rooms.idRoom = ?";
@@ -63,6 +68,7 @@ router.get("/getRoomDetails/:idRoom", (req, res) => {
         });
 });
 
+// FETCHING ALL ROOMS FOR ADMIN PROFILE
 router.get("/getAllRoomsProfile", (req, res) => {
     const allRoomsProfileSql = "SELECT rooms.idUser, COALESCE(rooms.idRoom, usersjoinrooms.idRoom) AS idRoom, rooms.title, rooms.onGoing, rooms.idTTRPG, ttrpg_ttrpggenres.idTTRPG, ttrpg_ttrpggenres.idGenre, ttrpg.TTRPGName, roomshavelevels.idLevel, levels.levelName, usersjoinrooms.idUser AS joinedIdUser FROM rooms LEFT JOIN ttrpg_ttrpggenres ON rooms.idTTRPG = ttrpg_ttrpggenres.idTTRPG LEFT JOIN usersjoinrooms ON rooms.idRoom = usersjoinrooms.idRoom LEFT JOIN ttrpg ON rooms.idTTRPG = ttrpg.idTTRPG LEFT JOIN roomshavelevels ON rooms.idRoom = roomshavelevels.idRoom LEFT JOIN levels ON levels.idLevel = roomshavelevels.idLevel GROUP BY rooms.idRoom";
     pool
@@ -75,6 +81,7 @@ router.get("/getAllRoomsProfile", (req, res) => {
         });
 });
 
+// FETCHING ROOMS CREATED BY GAME MASTER USER IN PROFILE
 router.get("/getGMRoomsProfile/:idUser", (req, res) => {
     const idUser = req.params.idUser;
     const GMRoomsProfileSql = "SELECT rooms.idUser, COALESCE(rooms.idRoom, usersjoinrooms.idRoom) AS idRoom, rooms.title, rooms.onGoing, rooms.idTTRPG, ttrpg_ttrpggenres.idTTRPG, ttrpg_ttrpggenres.idGenre, ttrpg.TTRPGName, roomshavelevels.idLevel, levels.levelName, usersjoinrooms.idUser AS joinedIdUser FROM rooms LEFT JOIN ttrpg_ttrpggenres ON rooms.idTTRPG = ttrpg_ttrpggenres.idTTRPG LEFT JOIN usersjoinrooms ON rooms.idRoom = usersjoinrooms.idRoom LEFT JOIN ttrpg ON rooms.idTTRPG = ttrpg.idTTRPG LEFT JOIN roomshavelevels ON rooms.idRoom = roomshavelevels.idRoom LEFT JOIN levels ON levels.idLevel = roomshavelevels.idLevel WHERE rooms.idUser = ? GROUP BY rooms.idRoom";
@@ -88,6 +95,7 @@ router.get("/getGMRoomsProfile/:idUser", (req, res) => {
         });
 });
 
+// FETCHING ROOMS JOINED BY USER IN PROFILE
 router.get("/getPlayerRoomsProfile/:idUser", (req, res) => {
     const idUser = req.params.idUser;
     const GMRoomsProfileSql = "SELECT rooms.idUser, rooms.idRoom, rooms.title, rooms.onGoing, rooms.idTTRPG, ttrpg_ttrpggenres.idTTRPG, ttrpg_ttrpggenres.idGenre, ttrpg.TTRPGName, roomshavelevels.idLevel, levels.levelName, usersjoinrooms.idRoom, usersjoinrooms.idUser AS joinedIdUser FROM rooms LEFT JOIN ttrpg_ttrpggenres ON rooms.idTTRPG = ttrpg_ttrpggenres.idTTRPG LEFT JOIN usersjoinrooms ON rooms.idRoom = usersjoinrooms.idRoom LEFT JOIN ttrpg ON rooms.idTTRPG = ttrpg.idTTRPG LEFT JOIN roomshavelevels ON rooms.idRoom = roomshavelevels.idRoom LEFT JOIN levels ON levels.idLevel = roomshavelevels.idLevel WHERE usersjoinrooms.idUser = ?";
@@ -98,9 +106,9 @@ router.get("/getPlayerRoomsProfile/:idUser", (req, res) => {
         })
         .catch((err) => {
             console.error(err);
-        });
-});
+        });});
 
+// UPDATING ONGOING STATUS OF ROOM
 router.patch("/roomDetails/changeOngoing", (req, res) => {
     const { idRoom, onGoing } = req.body;
     const changeOngoingSql = "UPDATE rooms SET onGoing = ? WHERE idRoom = ?";
@@ -114,6 +122,7 @@ router.patch("/roomDetails/changeOngoing", (req, res) => {
         });
 });
 
+// ROOM CREATION
 router.post("/createRoom", (req, res) => {
     const { idUser, title, description, discord, onGoing, idTTRPG, idLevel } = req.body;
     const insertRoomSql = "INSERT INTO rooms (idUser, title, description, discord, idTTRPG, onGoing) VALUES (?, ?, ?, ?, ?, ?)";
@@ -138,6 +147,7 @@ router.post("/createRoom", (req, res) => {
         });
 });
 
+// ROOM DELETION
 router.delete("/deleteRoom/:idRoom", (req, res) => {
     const idRoom = req.params.idRoom;
     const deleteRoomSql = "DELETE FROM usersjoinrooms WHERE idRoom = ?";
