@@ -121,7 +121,8 @@ router.post("/login", async (req, res) => {
         }
     } catch (err) {
         console.error(err);
-        res.status(500).json("Une erreur est survenue");
+        // res.status(500).json("Une erreur est survenue");
+        res.status(500).json(`${err.message}`);
     }
 });
 
