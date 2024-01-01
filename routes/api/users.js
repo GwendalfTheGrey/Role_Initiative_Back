@@ -53,13 +53,13 @@ router.post("/register", (req, res) => {
                                         })
                                         .catch((err) => {
                                             console.error(err);
-                                            // res.status(500).json("Une erreur est survenue");
-                                            res.status(500).json(`Une erreur insert level ${result[0]}`);
+                                            res.status(500).json("Une erreur est survenue");
                                         });
                                 })
                                 .catch((err) => {
                                     console.error(err);
-                                    res.status(500).json("Une erreur insert user");
+                                    // res.status(500).json("Une erreur est survenue");
+                                    res.status(500).json(`${err.message}`);
                                 });
                         } else {
                             res.status(400).json("Nom d'utilisateur déjà utilisé");
@@ -67,7 +67,7 @@ router.post("/register", (req, res) => {
                     })
                     .catch((err) => {
                         console.error(err);
-                        res.status(500).json("Une erreur verify");
+                        res.status(500).json("Une erreur est survenue");
                     });
             } else {
                 res.status(400).json("Cet email existe déjà");
@@ -75,7 +75,7 @@ router.post("/register", (req, res) => {
         })
         .catch((err) => {
             console.error(err);
-            res.status(500).json("Une erreur first verify");
+            res.status(500).json("Une erreur est survenue");
         });
 });
 
