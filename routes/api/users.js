@@ -217,7 +217,7 @@ router.get("/resetPassword/:email", (req, res) => {
         .query(searchMailSql, [email])
         .then((result) => {
             if (result[0].length > 0) {
-                const confirmLink = `http://localhost:3000/reset-password?email=${email}`;
+                const confirmLink = `https://role-initiative.vercel.app/reset-password?email=${email}`;
                 const mailOptions = {
                     from: "gwendalftests@gmail.com",
                     to: email,
