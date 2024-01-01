@@ -99,7 +99,7 @@ router.post("/login", async (req, res) => {
                     secure: true,
                     sameSite: "None",
                 });
-                res.json({ ...rows[0], userPassword: "", icon: !rows[0].icon.data || !rows.icon ? null : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 });
+                res.json({ ...rows[0], userPassword: "", icon: !rows[0].icon ? null : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 });
             } else if (bcrypt.compareSync(passwordLogin, rows[0].userPassword) && stayConnected) {
                 const token = jsonwebtoken.sign({}, key, {
                     subject: rows[0].idUser.toString(),
@@ -112,7 +112,7 @@ router.post("/login", async (req, res) => {
                     secure: true,
                     sameSite: "None",
                 });
-                res.json({ ...rows[0], userPassword: "", icon: !rows[0].icon.data || !rows.icon ? null : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 });
+                res.json({ ...rows[0], userPassword: "", icon: !rows[0].icon ? null : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 });
             } else {
                 res.status(400).json("Email et/ou mot de passe incorrectes");
             }
@@ -143,7 +143,7 @@ router.get("/connectedUser", (req, res) => {
             .query(selectSql, [decodedToken.sub])
             .then(([rows]) => {
                 if (rows.length > 0) {
-                    const connectedUser = { ...rows[0], userPassword: "", icon: !rows[0].icon.data || !rows.icon ? false : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 };
+                    const connectedUser = { ...rows[0], userPassword: "", icon: !rows[0].icon ? null : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 };
                     res.json(connectedUser);
                 } else {
                     res.json(null);
@@ -273,7 +273,7 @@ router.patch("/modifyUser", (req, res) => {
                 .query(selectModifiedUserSql, [idUser])
                 .then(([rows]) => {
                     if (rows.length > 0) {
-                        const modifiedUser = { ...rows[0], userPassword: "", icon: !rows[0].icon.data || !rows.icon ? false : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 };
+                        const modifiedUser = { ...rows[0], userPassword: "", icon: !rows[0].icon ? null : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 };
                         res.json(modifiedUser);
                     } else {
                         res.status(404).json("Utilisateur non trouvé");
