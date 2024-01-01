@@ -257,4 +257,160 @@ router.post("/changePassword", async (req, res) => {
         });
 });
 
+// UPDATING USER: USERNAME, LEVEL,ICON
+router.patch("/modifyUser", (req, res) => {
+    const { idUser, username, email, idLevel, icon } = req.body;
+    const modifyUserSql = icon ?
+        "UPDATE users JOIN usershavelevels ON users.idUser = usershavelevels.idUser SET users.username = ?, users.email = ?, users.icon = ?, usershavelevels.idLevel = ? WHERE users.idUser = ?" :
+        "UPDATE users JOIN usershavelevels ON users.idUser = usershavelevels.idUser SET users.username = ?, users.email = ?, usershavelevels.idLevel = ? WHERE users.idUser = ?";
+    pool
+        .query(modifyUserSql, icon ? [username, email, icon, idLevel, idUser] : [username, email, idLevel, idUser])
+        .then((result) => {
+            const selectModifiedUserSql = "SELECT * FROM users NATURAL JOIN usershavelevels NATURAL JOIN levels WHERE idUser = ?";
+            pool
+                .query(selectModifiedUserSql, [idUser])
+                .then(([rows]) => {
+                    if (rows.length > 0) {
+                        const modifiedUser = { ...rows[0], userPassword: "", icon: !rows[0].icon.data ? false : rows[0].icon, GM: rows[0].GM === 1, admin: rows[0].admin === 1 };
+                        res.json(modifiedUser);
+                    } else {
+                        res.status(404).json("Utilisateur non trouvé");
+                    }
+                })
+                .catch((err) => {
+                    console.error(err);
+                    res.status(500).json("Une erreur est survenue");
+                });
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).json("Une erreur est survenue");
+        });
+
+
+    // try {
+    //     const { idUser, username, email, idLevel, icon } = req.body;
+    //     const modifyUserSql = icon ?
+    //     "UPDATE users JOIN usershavelevels ON users.idUser = usershavelevels.idUser SET users.username = ?, users.email = ?, users.icon = ?, usershavelevels.idLevel = ? WHERE users.idUser = ?" :
+    //     "UPDATE users JOIN usershavelevels ON users.idUser = usershavelevels.idUser SET users.username = ?, users.email = ?, usershavelevels.idLevel = ? WHERE users.idUser = ?";
+    //     connection.query(modifyUserSql, icon ? [username, email, icon, idLevel, idUser] : [username, email, idLevel, idUser], (err, result) => {
+    //         if (err) throw err;
+    //         const selectModifiedUserSql = "SELECT * FROM users NATURAL JOIN usershavelevels NATURAL JOIN levels WHERE idUser = ?";
+    //         connection.query(selectModifiedUserSql, [idUser], (err, result) => {
+    //             if (err) throw err;
+    //             if (result.length > 0) {
+    //                 const modifiedUser = { ...result[0], userPassword: "", icon: !result[0].icon.data ? false : result[0].icon, GM: result[0].GM === 1, admin: result[0].admin === 1 };
+    //                 res.json(modifiedUser)
+    //             } else {
+    //                 res.status(404).json("Utilisateur non trouvé")
+    //             }
+    //         })
+    //     })
+    // } catch (error) {
+    //     console.error(error);
+    //     res.status(500).json("Une erreur est survenue");
+    // }
+});
+
+// DELETE USER FROM EVERY TABLES
+router.delete("/deleteUser/:idUser", (req, res) => {
+    const idUser = req.params.idUser;
+    const deleteUserJoinRoomSql = "DELETE FROM usersjoinrooms WHERE idUser = ?";
+    pool
+        .query(deleteUserJoinRoomSql, [idUser])
+        .then((result) => {
+            const selectUserRoomsSql = "SELECT * FROM rooms WHERE idUser = ?";
+            pool
+                .query(selectUserRoomsSql, [idUser])
+                .then(([rows]) => {
+                    if (rows.length > 0) {
+                        rows.map((room) => {
+                            const deleteRoomHaveLevelsSql = "DELETE FROM roomshavelevels WHERE idRoom = ?";
+                            pool
+                                .query(deleteRoomHaveLevelsSql, [room.idRoom])
+                                .catch((err) => {
+                                    console.error(err);
+                                    res.status(500).json({ messageError: "Une erreur est survenue" });
+                                });
+                        });
+                    }
+                    const deleteUserRoomsSql = "DELETE FROM rooms WHERE idUser = ?";
+                    pool
+                        .query(deleteUserRoomsSql, [idUser])
+                        .then((result) => {
+                            const deleteUserHaveLevel = "DELETE FROM usershavelevels WHERE idUser = ?";
+                            pool
+                                .query(deleteUserHaveLevel, [idUser])
+                                .then((result) => {
+                                    const deleteUserSql = "DELETE FROM users WHERE idUser = ?";
+                                    pool
+                                        .query(deleteUserSql, [idUser])
+                                        .then((result) => {
+                                            res.clearCookie("Role_Initiative_Token" || "Role_Initiative_Extended_Token");
+                                            res.status(200).json({ message: "Compte supprimé, vous allez être redirigé(e) !" });
+                                        })
+                                        .catch((err) => {
+                                            console.error(err);
+                                            res.status(500).json({ messageError: "Une erreur est survenue" });
+                                        });
+                                })
+                                .catch((err) => {
+                                    console.error(err);
+                                    res.status(500).json({ messageError: "Une erreur est survenue" });
+                                });
+                        })
+                        .catch((err) => {
+                            console.error(err);
+                            res.status(500).json({ messageError: "Une erreur est survenue" });
+                        });
+                })
+                .catch((err) => {
+                    console.error(err);
+                    res.status(500).json({ messageError: "Une erreur est survenue" });
+                });
+        })
+        .catch((err) => {
+            console.error(err);
+            res.status(500).json({ messageError: "Une erreur est survenue" });
+        });
+
+    // try {
+    //     const idUser = req.params.idUser;
+    //     const deleteUserJoinRoomSql = "DELETE FROM usersjoinrooms WHERE idUser = ?";
+    //     connection.query(deleteUserJoinRoomSql, [idUser], (err, result) => {
+    //         if (err) throw err;
+    //         const selectUserRoomsSql = "SELECT * FROM rooms WHERE idUser = ?";
+    //         connection.query(selectUserRoomsSql, [idUser], (err, result) => {
+    //             if (err) throw err;
+    //             if (result.length > 0) {
+    //                 result.map((room) => {
+    //                     const deleteRoomHaveLevelsSql = "DELETE FROM roomshavelevels WHERE idRoom = ?";
+    //                     connection.query(deleteRoomHaveLevelsSql, [room.idRoom], (err, result) => {
+    //                         if (err) throw err;
+    //                     });
+    //                 });
+    //             }
+    //             const deleteUserRoomsSql = "DELETE FROM rooms WHERE idUser = ?";
+    //             connection.query(deleteUserRoomsSql, [idUser], (err, result) => {
+    //                 if (err) throw err;
+    //                 const deleteUserHaveLevel = "DELETE FROM usershavelevels WHERE idUser = ?";
+    //                 connection.query(deleteUserHaveLevel, [idUser], (err, result) => {
+    //                     if (err) throw err;
+    //                     const deleteUserSql = "DELETE FROM users WHERE idUser = ?";
+    //                     connection.query(deleteUserSql, [idUser], (err, result) => {
+    //                         if (err) throw err;
+    //                         res.clearCookie("Role_Initiative_Token" || "Role_Initiative_Extended_Token");
+    //                         res.status(200).json({ message: "Compte supprimé, vous allez être redirigé(e) !" });
+    //                     });
+    //                 });
+    //             });
+    //         });
+    //     });
+    // } catch (error) {
+    //     console.error(error);
+    //     res.status(500).json({ messageError: "Une erreur est survenue" });
+    // }
+});
+
+
 module.exports = router;
